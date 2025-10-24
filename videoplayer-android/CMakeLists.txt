@@ -31,9 +31,20 @@ set(libs_dir ${CMAKE_CURRENT_SOURCE_DIR}/libraries)
 set(CARDBOARD_LIB ${libs_dir}/jni/${ANDROID_ABI}/libGfxPluginCardboard.so)
 set(CARDBOARD_INCLUDE_DIR ${libs_dir})
 
-# OpenCV
-set(OpenCV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jni/opencv)
-find_package(OpenCV REQUIRED)
+# OpenCV - try to find it in the Maven dependency
+find_package(OpenCV QUIET)
+if(NOT OpenCV_FOUND)
+    # Try to find OpenCV in common Android locations
+    set(OpenCV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jni/opencv)
+    if(EXISTS ${OpenCV_DIR})
+        find_package(OpenCV REQUIRED PATHS ${OpenCV_DIR})
+    else()
+        message(WARNING "OpenCV not found, building without OpenCV support")
+        set(OPENCV_AVAILABLE FALSE)
+    endif()
+else()
+    set(OPENCV_AVAILABLE TRUE)
+endif()
 
 # === Video Player ===
 # Sources

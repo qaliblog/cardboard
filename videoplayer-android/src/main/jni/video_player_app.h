@@ -48,7 +48,7 @@ class VideoPlayerApp {
   void InitializeCardboard();
   void RenderVideoFrame();
   void ProcessVideoFrame(const cv::Mat& input, cv::Mat& output);
-  void ApplyFoggyEffect(const cv::Mat& input, cv::Mat& output);
+  void ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is_left_eye);
   
   // OpenGL resources
   GLuint program_;
