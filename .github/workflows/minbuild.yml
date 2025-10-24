@@ -1,0 +1,37 @@
+name: Android Build - Find APK Path
+
+on:
+  workflow_dispatch:  # You can manually trigger it
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        build-tools: 35.0.0
+
+    - name: Grant Gradle permissions
+      run: chmod +x gradlew
+
+    - name: Build release APK
+      run: ./gradlew assembleRelease --stacktrace
+
+    - name: Print all generated APK paths
+      run: |
+        echo "📦 Listing all APK files generated:"
+        find . -type f -name "*.apk" | tee apk-paths.txt
+        echo ""
+        echo "✅ If you see a path above, use it in your upload-artifact step."
