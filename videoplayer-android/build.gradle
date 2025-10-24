@@ -1,0 +1,83 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdk 35
+    lintOptions {
+        abortOnError false
+    }
+    defaultConfig {
+        applicationId "com.google.cardboard.videoplayer"
+        minSdkVersion 26
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+        externalNativeBuild.cmake {
+            arguments "-DANDROID_STL=c++_shared"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild.cmake {
+        path "CMakeLists.txt"
+    }
+    namespace 'com.google.cardboard.videoplayer'
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.google.protobuf:protobuf-javalite:3.19.4'
+    implementation project(":sdk")
+    
+    // OpenCV for Android
+    implementation 'org.opencv:opencv-android:4.8.0'
+    
+    // Media3 for video playback
+    implementation 'androidx.media3:media3-exoplayer:1.2.1'
+    implementation 'androidx.media3:media3-ui:1.2.1'
+    implementation 'androidx.media3:media3-common:1.2.1'
+    
+    // File picker
+    implementation 'com.github.dhaval2404:imagepicker:2.1'
+    
+    // Permissions
+    implementation 'com.karumi:dexter:6.2.3'
+}
+
+// The dependencies for NDK builds live inside the .aar files so they need to
+// be extracted before NDK targets can link against.
+task extractNdk(type: Copy)  {
+    if (file("${project.rootDir}/sdk/build/outputs/aar/sdk-release.aar").exists()) {
+        copy {
+            from zipTree("${project.rootDir}/sdk/build/outputs/aar/sdk-release.aar")
+            into "libraries/"
+            include "jni/**/libGfxPluginCardboard.so"
+        }
+        copy {
+            from "${project.rootDir}/sdk/include/cardboard.h"
+            into "libraries/"
+        }
+    }
+}
+
+task deleteNdk(type: Delete) {
+    delete "libraries/jni"
+    delete "libraries/cardboard.h"
+}
+
+build.dependsOn(extractNdk)
+clean.dependsOn(deleteNdk)

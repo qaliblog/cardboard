@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VR Video Player</string>
+    <string name="title_activity_video_player">Select Video</string>
+    <string name="title_activity_vr_video">VR Video Player</string>
+    <string name="title_activity_settings">Effect Settings</string>
+    
+    <string name="select_video">Select Video</string>
+    <string name="select_video_description">Choose a video file to play in VR mode with 3D effects</string>
+    
+    <string name="vr_mode">VR Mode</string>
+    <string name="playing">Playing</string>
+    <string name="paused">Paused</string>
+    
+    <string name="tap_to_pause">Tap to pause/resume</string>
+    <string name="hold_and_tilt">Hold and tilt to seek</string>
+    
+    <string name="read_storage_permission">Storage permission is required to access video files</string>
+    <string name="camera_permission">Camera permission is required for head tracking</string>
+    
+    <string name="no_video_selected">No video selected</string>
+    <string name="permissions_required">Permissions are required to select videos</string>
+</resources>
