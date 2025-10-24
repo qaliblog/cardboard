@@ -1,0 +1,90 @@
+name: Android Build (Debug)
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        build-tools: 35.0.0
+        ndk-version: 25.1.8937393
+      
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Download OpenCV Android SDK
+      run: |
+        mkdir -p videoplayer-android/src/main/jni/opencv
+        cd videoplayer-android/src/main/jni/opencv
+        wget -O opencv-android-sdk.zip https://github.com/opencv/opencv/releases/download/4.8.0/opencv-4.8.0-android-sdk.zip
+        unzip opencv-android-sdk.zip
+        mv OpenCV-android-sdk/sdk/native/jni/include .
+        mv OpenCV-android-sdk/sdk/native/libs .
+        cat > OpenCVConfig.cmake << 'EOF'
+        set(OpenCV_FOUND TRUE)
+        set(OpenCV_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/include")
+        set(OpenCV_LIBS_DIR "${CMAKE_CURRENT_LIST_DIR}/libs")
+        set(OpenCV_LIBS "")
+        file(GLOB OPENCV_LIB_FILES "${OpenCV_LIBS_DIR}/${ANDROID_ABI}/*.so")
+        foreach(lib ${OPENCV_LIB_FILES})
+          get_filename_component(lib_name ${lib} NAME_WE)
+          string(REGEX REPLACE "^lib" "" lib_name ${lib_name})
+          list(APPEND OpenCV_LIBS ${lib})
+        endforeach()
+        message(STATUS "OpenCV found: ${OpenCV_INCLUDE_DIRS}")
+        message(STATUS "OpenCV libs: ${OpenCV_LIBS}")
+        EOF
+        rm -rf OpenCV-android-sdk opencv-android-sdk.zip
+      
+    - name: Build Cardboard SDK AAR first
+      run: ./gradlew :sdk:assembleDebug
+      
+    - name: Verify SDK AAR was created
+      run: ls -la sdk/build/outputs/aar/
+      
+    - name: Build Video Player Debug APK
+      run: ./gradlew :videoplayer-android:assembleDebug --stacktrace
+
+    # 🧩 Debug step: print generated APKs
+    - name: Debug - List generated APK files
+      run: |
+        echo "📦 Listing all generated APK files (debug build):"
+        find videoplayer-android/build/outputs -type f -name "*.apk" | tee apk-paths.txt
+        echo ""
+        echo "✅ If no files are shown above, check Gradle build output."
+
+    # 🧩 Upload Debug APK artifact
+    - name: Upload Debug APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: videoplayer-debug-apk
+        path: videoplayer-android/build/outputs/apk/debug/*.apk
