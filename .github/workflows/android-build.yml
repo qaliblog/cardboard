@@ -24,6 +24,10 @@ jobs:
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        build-tools: 35.0.0
+        ndk-version: 25.1.8937393
       
     - name: Cache Gradle packages
       uses: actions/cache@v4
@@ -38,10 +42,13 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
-    - name: Build with Gradle
-      run: ./gradlew build
+    - name: Build Cardboard SDK AAR first
+      run: ./gradlew :sdk:assembleRelease
       
-    - name: Build APK
+    - name: Verify SDK AAR was created
+      run: ls -la sdk/build/outputs/aar/
+      
+    - name: Build Video Player APK
       run: ./gradlew :videoplayer-android:assembleRelease
       
     - name: Upload APK artifact
