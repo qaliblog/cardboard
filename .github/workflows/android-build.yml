@@ -42,6 +42,15 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
+    - name: Download OpenCV Android SDK
+      run: |
+        mkdir -p videoplayer-android/src/main/jni/opencv
+        cd videoplayer-android/src/main/jni/opencv
+        wget -O opencv-android-sdk.zip https://github.com/opencv/opencv/releases/download/4.8.0/opencv-4.8.0-android-sdk.zip
+        unzip opencv-android-sdk.zip
+        mv OpenCV-android-sdk/* .
+        rm -rf OpenCV-android-sdk opencv-android-sdk.zip
+      
     - name: Build Cardboard SDK AAR first
       run: ./gradlew :sdk:assembleRelease
       

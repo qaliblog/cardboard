@@ -270,8 +270,13 @@ void VideoPlayerApp::RenderVideoFrame() {
   
   if (!processed_frame_.empty()) {
     // Convert OpenCV Mat to OpenGL texture
+#ifdef OPENCV_AVAILABLE
     cv::Mat gl_frame;
     cv::cvtColor(processed_frame_, gl_frame, cv::COLOR_BGR2RGB);
+#else
+    // Process raw frame data without OpenCV
+    // For now, just use the raw data directly
+#endif
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gl_frame.cols, gl_frame.rows,
                     GL_RGB, GL_UNSIGNED_BYTE, gl_frame.data);
   }
@@ -279,6 +284,7 @@ void VideoPlayerApp::RenderVideoFrame() {
   frame_updated_ = false;
 }
 
+#ifdef OPENCV_AVAILABLE
 void VideoPlayerApp::ProcessVideoFrame(const cv::Mat& input, cv::Mat& output) {
   if (input.empty()) {
     return;
@@ -309,6 +315,39 @@ void VideoPlayerApp::ProcessVideoFrame(const cv::Mat& input, cv::Mat& output) {
   }
   processed_right_eye.copyTo(output(right_eye_rect));
 }
+#else
+void VideoPlayerApp::ProcessVideoFrame(const uint8_t* input_data, int width, int height, uint8_t* output_data) {
+  if (!input_data || !output_data) {
+    return;
+  }
+
+  // For now, just copy the input to output without processing
+  // This creates a basic split-screen effect
+  int half_width = width / 2;
+  int bytes_per_pixel = 4; // RGBA
+  
+  // Copy left half to both left and right output
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < half_width; x++) {
+      int input_idx = (y * width + x) * bytes_per_pixel;
+      int left_output_idx = (y * width + x) * bytes_per_pixel;
+      int right_output_idx = (y * width + (x + half_width)) * bytes_per_pixel;
+      
+      // Copy to left eye
+      output_data[left_output_idx] = input_data[input_idx];
+      output_data[left_output_idx + 1] = input_data[input_idx + 1];
+      output_data[left_output_idx + 2] = input_data[input_idx + 2];
+      output_data[left_output_idx + 3] = input_data[input_idx + 3];
+      
+      // Copy to right eye (same as left for now)
+      output_data[right_output_idx] = input_data[input_idx];
+      output_data[right_output_idx + 1] = input_data[input_idx + 1];
+      output_data[right_output_idx + 2] = input_data[input_idx + 2];
+      output_data[right_output_idx + 3] = input_data[input_idx + 3];
+    }
+  }
+}
+#endif
 
 void VideoPlayerApp::ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is_left_eye) {
   if (input.empty()) {

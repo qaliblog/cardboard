@@ -23,7 +23,9 @@
 #include <android/asset_manager.h>
 #include <jni.h>
 #include <memory>
+#ifdef OPENCV_AVAILABLE
 #include <opencv2/opencv.hpp>
+#endif
 
 #include "cardboard.h"
 
@@ -47,8 +49,12 @@ class VideoPlayerApp {
   void InitializeGl();
   void InitializeCardboard();
   void RenderVideoFrame();
+#ifdef OPENCV_AVAILABLE
   void ProcessVideoFrame(const cv::Mat& input, cv::Mat& output);
   void ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is_left_eye);
+#else
+  void ProcessVideoFrame(const uint8_t* input_data, int width, int height, uint8_t* output_data);
+#endif
   
   // OpenGL resources
   GLuint program_;
@@ -65,8 +71,15 @@ class VideoPlayerApp {
   CardboardHeadTracker* head_tracker_;
   
   // Video processing
+#ifdef OPENCV_AVAILABLE
   cv::Mat current_frame_;
   cv::Mat processed_frame_;
+#else
+  uint8_t* current_frame_data_;
+  uint8_t* processed_frame_data_;
+  int frame_width_;
+  int frame_height_;
+#endif
   bool frame_updated_;
   
   // Rendering parameters

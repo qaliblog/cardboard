@@ -31,19 +31,15 @@ set(libs_dir ${CMAKE_CURRENT_SOURCE_DIR}/libraries)
 set(CARDBOARD_LIB ${libs_dir}/jni/${ANDROID_ABI}/libGfxPluginCardboard.so)
 set(CARDBOARD_INCLUDE_DIR ${libs_dir})
 
-# OpenCV - try to find it in the Maven dependency
-find_package(OpenCV QUIET)
-if(NOT OpenCV_FOUND)
-    # Try to find OpenCV in common Android locations
-    set(OpenCV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jni/opencv)
-    if(EXISTS ${OpenCV_DIR})
-        find_package(OpenCV REQUIRED PATHS ${OpenCV_DIR})
-    else()
-        message(WARNING "OpenCV not found, building without OpenCV support")
-        set(OPENCV_AVAILABLE FALSE)
-    endif()
-else()
+# OpenCV
+set(OpenCV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/jni/opencv)
+if(EXISTS ${OpenCV_DIR})
+    find_package(OpenCV REQUIRED PATHS ${OpenCV_DIR})
     set(OPENCV_AVAILABLE TRUE)
+    message(STATUS "OpenCV found at ${OpenCV_DIR}")
+else()
+    message(WARNING "OpenCV not found at ${OpenCV_DIR}, building without OpenCV support")
+    set(OPENCV_AVAILABLE FALSE)
 endif()
 
 # === Video Player ===
@@ -53,12 +49,17 @@ file(GLOB native_srcs "src/main/jni/*.cc")
 add_library(videoplayer_jni SHARED ${native_srcs})
 # Includes
 target_include_directories(videoplayer_jni PRIVATE ${CARDBOARD_INCLUDE_DIR})
-target_include_directories(videoplayer_jni PRIVATE ${OpenCV_INCLUDE_DIRS})
+if(OPENCV_AVAILABLE)
+    target_include_directories(videoplayer_jni PRIVATE ${OpenCV_INCLUDE_DIRS})
+    target_compile_definitions(videoplayer_jni PRIVATE OPENCV_AVAILABLE)
+endif()
 # Build
 target_link_libraries(videoplayer_jni
     ${ANDROID_LIB}
     ${GLESv2_LIB}
     ${GLESv3_LIB}
     ${LOG_LIB}
-    ${CARDBOARD_LIB}
-    ${OpenCV_LIBS})
+    ${CARDBOARD_LIB})
+if(OPENCV_AVAILABLE)
+    target_link_libraries(videoplayer_jni ${OpenCV_LIBS})
+endif()
