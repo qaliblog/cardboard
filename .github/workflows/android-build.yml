@@ -48,7 +48,24 @@ jobs:
         cd videoplayer-android/src/main/jni/opencv
         wget -O opencv-android-sdk.zip https://github.com/opencv/opencv/releases/download/4.8.0/opencv-4.8.0-android-sdk.zip
         unzip opencv-android-sdk.zip
-        mv OpenCV-android-sdk/* .
+        # Move the OpenCV SDK to the correct location
+        mv OpenCV-android-sdk/sdk/native/jni/include .
+        mv OpenCV-android-sdk/sdk/native/libs .
+        # Create a simple OpenCVConfig.cmake file
+        cat > OpenCVConfig.cmake << 'EOF'
+        set(OpenCV_FOUND TRUE)
+        set(OpenCV_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/include")
+        set(OpenCV_LIBS_DIR "${CMAKE_CURRENT_LIST_DIR}/libs")
+        set(OpenCV_LIBS "")
+        file(GLOB OPENCV_LIB_FILES "${OpenCV_LIBS_DIR}/${ANDROID_ABI}/*.so")
+        foreach(lib ${OPENCV_LIB_FILES})
+          get_filename_component(lib_name ${lib} NAME_WE)
+          string(REGEX REPLACE "^lib" "" lib_name ${lib_name})
+          list(APPEND OpenCV_LIBS ${lib})
+        endforeach()
+        message(STATUS "OpenCV found: ${OpenCV_INCLUDE_DIRS}")
+        message(STATUS "OpenCV libs: ${OpenCV_LIBS}")
+        EOF
         rm -rf OpenCV-android-sdk opencv-android-sdk.zip
       
     - name: Build Cardboard SDK AAR first
