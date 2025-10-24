@@ -101,7 +101,7 @@ Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeSetEffectSettings(
     jboolean right_enabled, jfloat right_contrast, jfloat right_red_tint, jfloat right_green_tint, 
     jfloat right_fog_intensity, jfloat right_directional) {
   if (g_video_player_app) {
-    VideoPlayerApp::EffectSettings settings;
+    cardboard::EffectSettings settings;
     settings.left_eye_enabled = left_enabled;
     settings.left_eye_contrast = left_contrast;
     settings.left_eye_red_tint = left_red_tint;

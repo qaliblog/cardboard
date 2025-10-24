@@ -145,7 +145,7 @@ void VideoPlayerApp::OnDrawFrame() {
   // Get head pose (but don't use it for rendering - static view)
   float position[3] = {0, 0, 0};
   float orientation[4] = {0, 0, 0, 1};
-  CardboardHeadTracker_getPose(head_tracker_, 0, CARDBOARD_VIEWPORT_ORIENTATION_LANDSCAPE_LEFT, position, orientation);
+  CardboardHeadTracker_getPose(head_tracker_, 0, kLandscapeLeft, position, orientation);
   
   // Render video frame
   RenderVideoFrame();
