@@ -31,6 +31,23 @@
 
 namespace cardboard {
 
+// Effect settings structure
+struct EffectSettings {
+  bool left_eye_enabled = true;
+  float left_eye_contrast = 1.0f;
+  float left_eye_red_tint = 0.0f;
+  float left_eye_green_tint = 0.0f;
+  float left_eye_fog_intensity = 0.3f;
+  float left_eye_directional = 0.0f;
+  
+  bool right_eye_enabled = false;
+  float right_eye_contrast = 1.0f;
+  float right_eye_red_tint = 0.0f;
+  float right_eye_green_tint = 0.0f;
+  float right_eye_fog_intensity = 0.0f;
+  float right_eye_directional = 0.0f;
+};
+
 class VideoPlayerApp {
  public:
   VideoPlayerApp(AAssetManager* asset_manager);
@@ -94,21 +111,7 @@ class VideoPlayerApp {
   std::string video_uri_;
   
   // Effect settings
-  struct EffectSettings {
-    bool left_eye_enabled = true;
-    float left_eye_contrast = 1.0f;
-    float left_eye_red_tint = 0.0f;
-    float left_eye_green_tint = 0.0f;
-    float left_eye_fog_intensity = 0.3f;
-    float left_eye_directional = 0.0f;
-    
-    bool right_eye_enabled = false;
-    float right_eye_contrast = 1.0f;
-    float right_eye_red_tint = 0.0f;
-    float right_eye_green_tint = 0.0f;
-    float right_eye_fog_intensity = 0.0f;
-    float right_eye_directional = 0.0f;
-  } effect_settings_;
+  EffectSettings effect_settings_;
 };
 
 }  // namespace cardboard

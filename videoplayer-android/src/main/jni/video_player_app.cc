@@ -143,15 +143,19 @@ void VideoPlayerApp::OnDrawFrame() {
   }
 
   // Get head pose (but don't use it for rendering - static view)
-  CardboardHeadTracker_getPose(head_tracker_, 0, &CardboardHeadTracker_getPose);
+  float position[3] = {0, 0, 0};
+  float orientation[4] = {0, 0, 0, 1};
+  CardboardHeadTracker_getPose(head_tracker_, 0, CARDBOARD_VIEWPORT_ORIENTATION_LANDSCAPE_LEFT, position, orientation);
   
   // Render video frame
   RenderVideoFrame();
   
   // Render distortion mesh
+  CardboardEyeTextureDescription left_eye = {texture_id_, 0.0f, 0.0f, 0.5f, 1.0f};
+  CardboardEyeTextureDescription right_eye = {texture_id_, 0.5f, 0.0f, 1.0f, 1.0f};
   CardboardDistortionRenderer_renderEyeToDisplay(
-      distortion_renderer_, texture_id_, 0, 0, 0, screen_width_, screen_height_,
-      0, 0, screen_width_, screen_height_);
+      distortion_renderer_, 0, 0, 0, screen_width_, screen_height_,
+      &left_eye, &right_eye);
 }
 
 void VideoPlayerApp::OnTriggerEvent() {
@@ -198,11 +202,13 @@ void VideoPlayerApp::InitializeGl() {
   
   // Create shader program
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex_shader, 1, &kVertexShader, nullptr);
+  const char* vertex_shader_src = kVertexShader;
+  glShaderSource(vertex_shader, 1, &vertex_shader_src, nullptr);
   glCompileShader(vertex_shader);
   
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragment_shader, 1, &kFragmentShader, nullptr);
+  const char* fragment_shader_src = kFragmentShader;
+  glShaderSource(fragment_shader, 1, &fragment_shader_src, nullptr);
   glCompileShader(fragment_shader);
   
   program_ = glCreateProgram();
@@ -247,17 +253,12 @@ void VideoPlayerApp::InitializeCardboard() {
   // Create head tracker
   head_tracker_ = CardboardHeadTracker_create();
   
-  // Create lens distortion (using default parameters for now)
-  CardboardLensDistortionParams lens_params = {};
-  lens_params.left_eye_field_of_view_angles[0] = fov_degrees_ * M_PI / 180.0f;
-  lens_params.left_eye_field_of_view_angles[1] = fov_degrees_ * M_PI / 180.0f;
-  lens_params.right_eye_field_of_view_angles[0] = fov_degrees_ * M_PI / 180.0f;
-  lens_params.right_eye_field_of_view_angles[1] = fov_degrees_ * M_PI / 180.0f;
-  
-  lens_distortion_ = CardboardLensDistortion_create(&lens_params);
+  // Create lens distortion with default parameters
+  // For now, use a simple approach without device parameters
+  lens_distortion_ = nullptr; // Will be set up later with actual device params
   
   // Create distortion renderer
-  distortion_renderer_ = CardboardDistortionRenderer_create();
+  distortion_renderer_ = nullptr; // Will be set up later
 }
 
 void VideoPlayerApp::RenderVideoFrame() {
@@ -369,24 +370,27 @@ void VideoPlayerApp::ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is
   cv::Mat result = float_input.clone();
   
   // Apply contrast
-  if (settings.contrast != 1.0f) {
-    result = result * settings.contrast;
+  float contrast = is_left_eye ? settings.left_eye_contrast : settings.right_eye_contrast;
+  if (contrast != 1.0f) {
+    result = result * contrast;
     result = cv::max(0.0f, cv::min(1.0f, result));
   }
   
   // Apply color tinting
-  if (settings.red_tint != 0.0f || settings.green_tint != 0.0f) {
+  float red_tint = is_left_eye ? settings.left_eye_red_tint : settings.right_eye_red_tint;
+  float green_tint = is_left_eye ? settings.left_eye_green_tint : settings.right_eye_green_tint;
+  if (red_tint != 0.0f || green_tint != 0.0f) {
     std::vector<cv::Mat> channels;
     cv::split(result, channels);
     
     // Apply red tint
-    if (settings.red_tint != 0.0f) {
-      channels[2] = channels[2] + settings.red_tint * 0.3f; // Red channel
+    if (red_tint != 0.0f) {
+      channels[2] = channels[2] + red_tint * 0.3f; // Red channel
     }
     
     // Apply green tint
-    if (settings.green_tint != 0.0f) {
-      channels[1] = channels[1] + settings.green_tint * 0.3f; // Green channel
+    if (green_tint != 0.0f) {
+      channels[1] = channels[1] + green_tint * 0.3f; // Green channel
     }
     
     cv::merge(channels, result);
@@ -394,7 +398,8 @@ void VideoPlayerApp::ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is
   }
   
   // Apply foggy effect
-  if (settings.fog_intensity > 0.0f) {
+  float fog_intensity = is_left_eye ? settings.left_eye_fog_intensity : settings.right_eye_fog_intensity;
+  if (fog_intensity > 0.0f) {
     cv::Mat fog_mask;
     cv::cvtColor(result, fog_mask, cv::COLOR_BGR2GRAY);
     
@@ -407,14 +412,15 @@ void VideoPlayerApp::ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is
     cv::cvtColor(blurred, fog_overlay, cv::COLOR_GRAY2BGR);
     
     // Blend with original image
-    cv::addWeighted(result, 1.0f - settings.fog_intensity, 
-                   fog_overlay, settings.fog_intensity, 0.0f, result);
+    cv::addWeighted(result, 1.0f - fog_intensity, 
+                   fog_overlay, fog_intensity, 0.0f, result);
   }
   
   // Apply directional stretch effect
-  if (settings.directional != 0.0f) {
+  float directional = is_left_eye ? settings.left_eye_directional : settings.right_eye_directional;
+  if (directional != 0.0f) {
     cv::Mat stretched;
-    int stretch_amount = static_cast<int>(settings.directional * 20); // Scale to pixels
+    int stretch_amount = static_cast<int>(directional * 20); // Scale to pixels
     if (stretch_amount != 0) {
       cv::resize(result, stretched, cv::Size(result.cols + stretch_amount, result.rows));
       if (stretch_amount > 0) {
