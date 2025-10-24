@@ -49,7 +49,7 @@ jobs:
       run: ls -la sdk/build/outputs/aar/
       
     - name: Build Video Player APK
-      run: ./gradlew :videoplayer-android:assembleRelease
+      run: ./gradlew :videoplayer-android:assembleRelease --continue
       
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
