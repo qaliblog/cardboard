@@ -1,4 +1,4 @@
-name: Android Build (Debug)
+name: Android Build and Debug Upload
 
 on:
   push:
@@ -74,15 +74,15 @@ jobs:
     - name: Build Video Player Debug APK
       run: ./gradlew :videoplayer-android:assembleDebug --stacktrace
 
-    # 🧩 Debug step: print generated APKs
+    # 🧩 NEW: Debug step to show all generated APK paths
     - name: Debug - List generated APK files
       run: |
         echo "📦 Listing all generated APK files (debug build):"
         find videoplayer-android/build/outputs -type f -name "*.apk" | tee apk-paths.txt
         echo ""
-        echo "✅ If no files are shown above, check Gradle build output."
+        echo "✅ If no APKs appear above, check Gradle module output."
 
-    # 🧩 Upload Debug APK artifact
+    # 🧩 NEW: Upload Debug APK artifact
     - name: Upload Debug APK artifact
       uses: actions/upload-artifact@v4
       with:
