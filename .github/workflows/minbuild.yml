@@ -73,22 +73,23 @@ jobs:
       run: ls -la sdk/build/outputs/aar/
       
     - name: Build Video Player APK
-      run: ./gradlew :videoplayer-android:assembleRelease --continue --stacktrace
+      run: ./gradlew :videoplayer-android:assembleRelease --stacktrace
 
-    # 🔍 NEW STEP: print all APK paths
-    - name: Print all generated APK paths
+    # 🧩 NEW: Debug step to print all generated APKs
+    - name: Debug - List generated APK files
       run: |
-        echo "📦 Listing all generated APK files:"
+        echo "📦 Listing all APK files found in build outputs:"
         find videoplayer-android/build/outputs -type f -name "*.apk" | tee apk-paths.txt
         echo ""
-        echo "✅ Use one of the paths above in your upload step if different."
+        echo "✅ If no files are shown above, check your Gradle build or output folder."
 
+    # 🧩 NEW: Upload APK artifact (flexible with *.apk)
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: videoplayer-apk
         path: videoplayer-android/build/outputs/apk/release/*.apk
-        
+
     - name: Create Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
