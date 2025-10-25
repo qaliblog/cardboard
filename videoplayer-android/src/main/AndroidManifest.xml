@@ -5,9 +5,15 @@
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true"/>
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true"/>
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Legacy storage permissions for Android 12 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    
+    <!-- Granular media permissions for Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <application

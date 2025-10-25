@@ -22,6 +22,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -43,6 +44,7 @@ import java.util.List;
  */
 public class VideoPlayerActivity extends AppCompatActivity implements MultiplePermissionsListener {
 
+    private static final String TAG = "VideoPlayerActivity";
     private static final int PERMISSIONS_REQUEST_CODE = 100;
     private static final int VIDEO_PICKER_REQUEST_CODE = 200;
     
@@ -59,21 +61,44 @@ public class VideoPlayerActivity extends AppCompatActivity implements MultiplePe
     }
 
     private void requestPermissionsAndSelectVideo() {
-        Dexter.withContext(this)
-                .withPermissions(
-                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.READ_MEDIA_VIDEO
-                )
-                .withListener(this)
-                .check();
+        Log.d(TAG, "Requesting permissions for Android API " + Build.VERSION.SDK_INT);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+ (API 33+) - Use granular media permissions
+            Log.d(TAG, "Using READ_MEDIA_VIDEO permission for Android 13+");
+            Dexter.withContext(this)
+                    .withPermissions(Manifest.permission.READ_MEDIA_VIDEO)
+                    .withListener(this)
+                    .check();
+        } else {
+            // Android 12 and below - Use legacy storage permission
+            Log.d(TAG, "Using READ_EXTERNAL_STORAGE permission for Android 12 and below");
+            Dexter.withContext(this)
+                    .withPermissions(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    .withListener(this)
+                    .check();
+        }
     }
 
     @Override
     public void onPermissionsChecked(MultiplePermissionsReport report) {
+        Log.d(TAG, "Permission check result: " + report.areAllPermissionsGranted());
+        
         if (report.areAllPermissionsGranted()) {
+            Log.d(TAG, "All permissions granted, proceeding to select video");
             selectVideo();
         } else {
-            Toast.makeText(this, "Permissions are required to select videos", Toast.LENGTH_LONG).show();
+            Log.w(TAG, "Permissions denied: " + report.getDeniedPermissionResponses());
+            
+            // Check if permissions were permanently denied
+            if (report.isAnyPermissionPermanentlyDenied()) {
+                Log.w(TAG, "Some permissions permanently denied");
+                // Show rationale and guide user to settings
+                Toast.makeText(this, "Permission permanently denied. Please enable in Settings.", Toast.LENGTH_LONG).show();
+                openAppSettings();
+            } else {
+                Toast.makeText(this, "Permissions are required to select videos", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -104,6 +129,13 @@ public class VideoPlayerActivity extends AppCompatActivity implements MultiplePe
     private void launchVrVideoPlayer() {
         Intent intent = new Intent(this, VrVideoActivity.class);
         intent.setData(selectedVideoUri);
+        startActivity(intent);
+    }
+    
+    private void openAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        intent.setData(uri);
         startActivity(intent);
     }
 }
