@@ -158,8 +158,11 @@ public class VrVideoActivity extends AppCompatActivity {
     }
     
     private void setupVideoFrameExtraction() {
+        // Get the OpenGL texture ID from native code
+        int textureId = nativeGetVideoTextureId(nativeApp);
+        
         // Create SurfaceTexture for video frame extraction
-        videoSurfaceTexture = new SurfaceTexture(0);
+        videoSurfaceTexture = new SurfaceTexture(textureId);
         videoSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
@@ -411,5 +414,6 @@ public class VrVideoActivity extends AppCompatActivity {
         float leftFogIntensity, float leftDirectional,
         boolean rightEnabled, float rightContrast, float rightRedTint, float rightGreenTint, 
         float rightFogIntensity, float rightDirectional);
+    private native int nativeGetVideoTextureId(long nativeApp);
     private native void nativeUpdateVideoTexture(long nativeApp, SurfaceTexture surfaceTexture);
 }

@@ -282,9 +282,9 @@ void VideoPlayerApp::RenderVideoFrame() {
   glBindTexture(GL_TEXTURE_2D, texture_id_);
   
   if (has_video_frame_) {
-    // TODO: Render actual video frame from SurfaceTexture
-    // For now, show a different pattern to indicate video is available
-    CreateVideoIndicatorPattern();
+    // Video frame is available - the SurfaceTexture should have updated the texture
+    // No need to create patterns, just use the existing texture content
+    LOGD("Rendering video frame from SurfaceTexture");
   } else {
     // Show animated test pattern when no video is available
     CreateTestPattern();
@@ -544,9 +544,13 @@ void VideoPlayerApp::SetEffectSettings(const EffectSettings& settings) {
   effect_settings_ = settings;
 }
 
+int VideoPlayerApp::GetVideoTextureId() {
+  return texture_id_;
+}
+
 void VideoPlayerApp::UpdateVideoTexture() {
   has_video_frame_ = true;
-  LOGD("Video texture updated");
+  LOGD("Video texture updated - frame available");
 }
 
 }  // namespace cardboard

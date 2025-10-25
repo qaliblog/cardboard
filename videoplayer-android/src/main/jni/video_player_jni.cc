@@ -119,12 +119,21 @@ Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeSetEffectSettings(
   }
 }
 
+JNIEXPORT jint JNICALL
+Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeGetVideoTextureId(
+    JNIEnv* env, jobject obj, jlong native_app) {
+  if (g_video_player_app) {
+    return g_video_player_app->GetVideoTextureId();
+  }
+  return 0;
+}
+
 JNIEXPORT void JNICALL
 Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeUpdateVideoTexture(
     JNIEnv* env, jobject obj, jlong native_app, jobject surface_texture) {
   if (g_video_player_app) {
-    // For now, just mark that we have a video frame
-    // TODO: Extract actual texture from SurfaceTexture
+    // Mark that we have a video frame available
+    // The SurfaceTexture will automatically update the OpenGL texture
     g_video_player_app->UpdateVideoTexture();
   }
 }

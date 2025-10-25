@@ -61,6 +61,7 @@ class VideoPlayerApp {
   void SetScreenParams(int width, int height);
   void SetVideoUri(const std::string& video_uri);
   void SetEffectSettings(const EffectSettings& settings);
+  int GetVideoTextureId();
   void UpdateVideoTexture();
 
  private:
