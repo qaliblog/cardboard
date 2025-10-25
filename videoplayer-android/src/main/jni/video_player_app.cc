@@ -138,24 +138,26 @@ void VideoPlayerApp::OnSurfaceCreated() {
 }
 
 void VideoPlayerApp::OnDrawFrame() {
-  if (!program_ || !distortion_renderer_) {
+  if (!program_) {
     return;
   }
+
+  // Clear the screen
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Get head pose (but don't use it for rendering - static view)
   float position[3] = {0, 0, 0};
   float orientation[4] = {0, 0, 0, 1};
-  CardboardHeadTracker_getPose(head_tracker_, 0, kLandscapeLeft, position, orientation);
+  if (head_tracker_) {
+    CardboardHeadTracker_getPose(head_tracker_, 0, kLandscapeLeft, position, orientation);
+  }
   
-  // Render video frame
+  // Render video frame to texture
   RenderVideoFrame();
   
-  // Render distortion mesh
-  CardboardEyeTextureDescription left_eye = {texture_id_, 0.0f, 0.0f, 0.5f, 1.0f};
-  CardboardEyeTextureDescription right_eye = {texture_id_, 0.5f, 0.0f, 1.0f, 1.0f};
-  CardboardDistortionRenderer_renderEyeToDisplay(
-      distortion_renderer_, 0, 0, 0, screen_width_, screen_height_,
-      &left_eye, &right_eye);
+  // Render the texture to screen (simple quad rendering for now)
+  RenderTextureToScreen();
 }
 
 void VideoPlayerApp::OnTriggerEvent() {
@@ -228,7 +230,21 @@ void VideoPlayerApp::InitializeGl() {
   // Create vertex buffer
   glGenBuffers(1, &vertex_buffer_);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(kQuadVertices), kQuadVertices, GL_STATIC_DRAW);
+  
+  // Combine vertices and texture coordinates into one buffer
+  std::vector<float> combined_data;
+  for (int i = 0; i < 8; i++) {
+    // Add vertex position (3 floats)
+    combined_data.push_back(kQuadVertices[i * 3]);
+    combined_data.push_back(kQuadVertices[i * 3 + 1]);
+    combined_data.push_back(kQuadVertices[i * 3 + 2]);
+    // Add texture coordinates (2 floats)
+    combined_data.push_back(kQuadTexCoords[i * 2]);
+    combined_data.push_back(kQuadTexCoords[i * 2 + 1]);
+  }
+  
+  glBufferData(GL_ARRAY_BUFFER, combined_data.size() * sizeof(float), 
+               combined_data.data(), GL_STATIC_DRAW);
   
   // Create texture
   glGenTextures(1, &texture_id_);
@@ -238,10 +254,15 @@ void VideoPlayerApp::InitializeGl() {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   
-  // Initialize with a black texture
-  std::vector<uint8_t> black_texture(512 * 512 * 3, 0);
+  // Initialize with a test pattern texture
+  std::vector<uint8_t> test_texture(512 * 512 * 3);
+  for (int i = 0; i < 512 * 512; i++) {
+    test_texture[i * 3] = 128;     // R
+    test_texture[i * 3 + 1] = 128; // G  
+    test_texture[i * 3 + 2] = 255; // B
+  }
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, 
-               black_texture.data());
+               test_texture.data());
   
   glUseProgram(program_);
   glUniform1i(texture_uniform_, 0);
@@ -254,35 +275,99 @@ void VideoPlayerApp::InitializeCardboard() {
   head_tracker_ = CardboardHeadTracker_create();
   
   // Create lens distortion with default parameters
-  // For now, use a simple approach without device parameters
-  lens_distortion_ = nullptr; // Will be set up later with actual device params
+  // Use default device parameters for now
+  lens_distortion_ = CardboardLensDistortion_create();
   
   // Create distortion renderer
-  distortion_renderer_ = nullptr; // Will be set up later
+  distortion_renderer_ = CardboardDistortionRenderer_create();
 }
 
 void VideoPlayerApp::RenderVideoFrame() {
-  if (!frame_updated_) {
-    return;
-  }
-  
-  // Update texture with current frame
+  // Always render - create a test pattern if no video frame is available
   glBindTexture(GL_TEXTURE_2D, texture_id_);
   
-  if (!processed_frame_.empty()) {
-    // Convert OpenCV Mat to OpenGL texture
+  if (frame_updated_ && !processed_frame_.empty()) {
+    // Update texture with current frame
 #ifdef OPENCV_AVAILABLE
     cv::Mat gl_frame;
     cv::cvtColor(processed_frame_, gl_frame, cv::COLOR_BGR2RGB);
-#else
-    // Process raw frame data without OpenCV
-    // For now, just use the raw data directly
-#endif
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gl_frame.cols, gl_frame.rows,
                     GL_RGB, GL_UNSIGNED_BYTE, gl_frame.data);
+#else
+    // Process raw frame data without OpenCV
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame_width_, frame_height_,
+                    GL_RGB, GL_UNSIGNED_BYTE, processed_frame_data_);
+#endif
+    frame_updated_ = false;
+  } else {
+    // Create a test pattern to verify rendering is working
+    CreateTestPattern();
+  }
+}
+
+void VideoPlayerApp::CreateTestPattern() {
+  // Create a simple test pattern to verify rendering
+  const int width = 512;
+  const int height = 512;
+  std::vector<uint8_t> test_pattern(width * height * 3);
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int index = (y * width + x) * 3;
+      
+      // Create a checkerboard pattern
+      bool is_white = ((x / 32) + (y / 32)) % 2 == 0;
+      
+      if (is_white) {
+        test_pattern[index] = 255;     // R
+        test_pattern[index + 1] = 255; // G
+        test_pattern[index + 2] = 255; // B
+      } else {
+        test_pattern[index] = 0;       // R
+        test_pattern[index + 1] = 0;   // G
+        test_pattern[index + 2] = 0;   // B
+      }
+    }
   }
   
-  frame_updated_ = false;
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                  GL_RGB, GL_UNSIGNED_BYTE, test_pattern.data());
+}
+
+void VideoPlayerApp::RenderTextureToScreen() {
+  // Use the shader program
+  glUseProgram(program_);
+  
+  // Bind the texture
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture_id_);
+  glUniform1i(texture_uniform_, 0);
+  
+  // Set up vertex attributes
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+  glEnableVertexAttribArray(position_attrib_);
+  glVertexAttribPointer(position_attrib_, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 0);
+  
+  // Set up texture coordinates
+  glEnableVertexAttribArray(tex_coord_attrib_);
+  glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 
+                       (void*)(3 * sizeof(float)));
+  
+  // Set MVP matrix to identity for now
+  float mvp_matrix[16] = {
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+  };
+  glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, mvp_matrix);
+  
+  // Draw the quad (both eyes)
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 8);
+  
+  // Disable vertex attributes
+  glDisableVertexAttribArray(position_attrib_);
+  glDisableVertexAttribArray(tex_coord_attrib_);
 }
 
 #ifdef OPENCV_AVAILABLE

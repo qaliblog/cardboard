@@ -66,6 +66,8 @@ class VideoPlayerApp {
   void InitializeGl();
   void InitializeCardboard();
   void RenderVideoFrame();
+  void CreateTestPattern();
+  void RenderTextureToScreen();
 #ifdef OPENCV_AVAILABLE
   void ProcessVideoFrame(const cv::Mat& input, cv::Mat& output);
   void ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is_left_eye);
