@@ -61,12 +61,14 @@ class VideoPlayerApp {
   void SetScreenParams(int width, int height);
   void SetVideoUri(const std::string& video_uri);
   void SetEffectSettings(const EffectSettings& settings);
+  void UpdateVideoTexture();
 
  private:
   void InitializeGl();
   void InitializeCardboard();
   void RenderVideoFrame();
   void CreateTestPattern();
+  void CreateVideoIndicatorPattern();
   void RenderTextureToScreen();
 #ifdef OPENCV_AVAILABLE
   void ProcessVideoFrame(const cv::Mat& input, cv::Mat& output);
@@ -100,6 +102,7 @@ class VideoPlayerApp {
   int frame_height_;
 #endif
   bool frame_updated_;
+  bool has_video_frame_;
   
   // Rendering parameters
   int screen_width_;

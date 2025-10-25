@@ -119,4 +119,14 @@ Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeSetEffectSettings(
   }
 }
 
+JNIEXPORT void JNICALL
+Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeUpdateVideoTexture(
+    JNIEnv* env, jobject obj, jlong native_app, jobject surface_texture) {
+  if (g_video_player_app) {
+    // For now, just mark that we have a video frame
+    // TODO: Extract actual texture from SurfaceTexture
+    g_video_player_app->UpdateVideoTexture();
+  }
+}
+
 }  // extern "C"

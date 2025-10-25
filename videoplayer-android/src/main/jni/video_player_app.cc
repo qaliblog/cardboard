@@ -102,6 +102,7 @@ VideoPlayerApp::VideoPlayerApp()
       distortion_renderer_(nullptr),
       head_tracker_(nullptr),
       frame_updated_(false),
+      has_video_frame_(false),
       screen_width_(0),
       screen_height_(0) {
   LOGD("VideoPlayerApp constructor");
@@ -280,14 +281,16 @@ void VideoPlayerApp::InitializeCardboard() {
 }
 
 void VideoPlayerApp::RenderVideoFrame() {
-  // For now, always render the animated test pattern
-  // This ensures we can see that the rendering pipeline is working
   glBindTexture(GL_TEXTURE_2D, texture_id_);
-  CreateTestPattern();
   
-  // TODO: Add actual video frame processing here
-  // The ExoPlayer is playing the video in a separate view,
-  // but we need to extract frames and pass them to this native code
+  if (has_video_frame_) {
+    // TODO: Render actual video frame from SurfaceTexture
+    // For now, show a different pattern to indicate video is available
+    CreateVideoIndicatorPattern();
+  } else {
+    // Show animated test pattern when no video is available
+    CreateTestPattern();
+  }
 }
 
 void VideoPlayerApp::CreateTestPattern() {
@@ -328,6 +331,32 @@ void VideoPlayerApp::CreateTestPattern() {
                   GL_RGB, GL_UNSIGNED_BYTE, test_pattern.data());
 }
 
+void VideoPlayerApp::CreateVideoIndicatorPattern() {
+  const int width = 512; const int height = 512;
+  std::vector<uint8_t> pattern(width * height * 3);
+  auto now = std::chrono::high_resolution_clock::now();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+  float time = millis * 0.001f;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int index = (y * width + x) * 3;
+      float center_x = width / 2.0f; float center_y = height / 2.0f;
+      float dx = x - center_x; float dy = y - center_y;
+      float distance = sqrt(dx * dx + dy * dy);
+      float angle = atan2(dy, dx) + time;
+      
+      // Create a pulsing green pattern to indicate video is available
+      float pulse = 0.5f + 0.5f * sin(time * 2.0f);
+      pattern[index] = (uint8_t)(50 * pulse);     // Red - low
+      pattern[index + 1] = (uint8_t)(255 * pulse); // Green - high
+      pattern[index + 2] = (uint8_t)(50 * pulse);  // Blue - low
+    }
+  }
+  
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pattern.data());
+}
+
 void VideoPlayerApp::RenderTextureToScreen() {
   // Use the shader program
   glUseProgram(program_);
@@ -347,11 +376,10 @@ void VideoPlayerApp::RenderTextureToScreen() {
   glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 
                        (void*)(3 * sizeof(float)));
   
-  // Render for both eyes with proper viewport setup
-  int half_width = screen_width_ / 2;
-  LOGD("Rendering VR split-screen: %dx%d, half_width=%d", screen_width_, screen_height_, half_width);
+  // Render for both eyes using full-screen quad with split texture coordinates
+  LOGD("Rendering VR split-screen: %dx%d", screen_width_, screen_height_);
   
-  // Set MVP matrix (same for both eyes)
+  // Set MVP matrix
   float mvp_matrix[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
@@ -360,16 +388,8 @@ void VideoPlayerApp::RenderTextureToScreen() {
   };
   glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, mvp_matrix);
   
-  // Left eye
-  glViewport(0, 0, half_width, screen_height_);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Draw first quad (left eye)
-  
-  // Right eye  
-  glViewport(half_width, 0, half_width, screen_height_);
-  glDrawArrays(GL_TRIANGLE_STRIP, 4, 4); // Draw second quad (right eye)
-  
-  // Reset viewport to full screen
-  glViewport(0, 0, screen_width_, screen_height_);
+  // Draw the full quad (both eyes) - texture coordinates handle the split
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 8); // Draw all 8 vertices (2 quads)
   
   // Disable vertex attributes
   glDisableVertexAttribArray(position_attrib_);
@@ -530,6 +550,11 @@ void VideoPlayerApp::ApplyEffects(const cv::Mat& input, cv::Mat& output, bool is
 
 void VideoPlayerApp::SetEffectSettings(const EffectSettings& settings) {
   effect_settings_ = settings;
+}
+
+void VideoPlayerApp::UpdateVideoTexture() {
+  has_video_frame_ = true;
+  LOGD("Video texture updated");
 }
 
 }  // namespace cardboard

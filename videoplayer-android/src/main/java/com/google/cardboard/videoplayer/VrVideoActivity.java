@@ -40,6 +40,10 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.graphics.SurfaceTexture;
+import android.view.Surface;
+import androidx.media3.common.VideoSize;
+import androidx.media3.exoplayer.video.VideoSink;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -80,6 +84,11 @@ public class VrVideoActivity extends AppCompatActivity {
     private boolean isPlaying = true;
     private long lastSeekTime = 0;
     private static final long SEEK_THRESHOLD = 500; // ms
+    
+    // Video frame extraction
+    private SurfaceTexture videoSurfaceTexture;
+    private Surface videoSurface;
+    private boolean hasVideoFrame = false;
 
     static {
         System.loadLibrary("videoplayer_jni");
@@ -142,10 +151,31 @@ public class VrVideoActivity extends AppCompatActivity {
         exoPlayer = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(exoPlayer);
         
+        // Set up video frame extraction
+        setupVideoFrameExtraction();
+        
         MediaItem mediaItem = MediaItem.fromUri(videoUri);
         exoPlayer.setMediaItem(mediaItem);
         exoPlayer.prepare();
         exoPlayer.play();
+    }
+    
+    private void setupVideoFrameExtraction() {
+        // Create SurfaceTexture for video frame extraction
+        videoSurfaceTexture = new SurfaceTexture(0);
+        videoSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                hasVideoFrame = true;
+                // Update the native texture
+                nativeUpdateVideoTexture(nativeApp, videoSurfaceTexture);
+            }
+        });
+        
+        videoSurface = new Surface(videoSurfaceTexture);
+        
+        // Set the video surface for ExoPlayer
+        exoPlayer.setVideoSurface(videoSurface);
     }
     
     private void setupSettingsButton() {
@@ -385,4 +415,5 @@ public class VrVideoActivity extends AppCompatActivity {
         float leftFogIntensity, float leftDirectional,
         boolean rightEnabled, float rightContrast, float rightRedTint, float rightGreenTint, 
         float rightFogIntensity, float rightDirectional);
+    private native void nativeUpdateVideoTexture(long nativeApp, SurfaceTexture surfaceTexture);
 }
