@@ -75,19 +75,19 @@ jobs:
       run: ls -la sdk/build/outputs/aar/
       
     - name: Build Video Player APK
-      run: ./gradlew :videoplayer-android:assembleRelease --continue
+      run: ./gradlew :videoplayer-android:assembleDebug --continue
       
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: videoplayer-apk
-        path: videoplayer-android/build/outputs/apk/release/videoplayer-android-release.apk
+        path: videoplayer-android/build/outputs/apk/debug/videoplayer-android-debug.apk
         
     - name: Create Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: videoplayer-android/build/outputs/apk/release/videoplayer-android-release.apk
+        files: videoplayer-android/build/outputs/apk/debug/videoplayer-android-debug.apk
         draft: false
         prerelease: false
       env:
