@@ -42,8 +42,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.graphics.SurfaceTexture;
 import android.view.Surface;
-import androidx.media3.common.VideoSize;
-import androidx.media3.exoplayer.video.VideoSink;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -88,7 +86,6 @@ public class VrVideoActivity extends AppCompatActivity {
     // Video frame extraction
     private SurfaceTexture videoSurfaceTexture;
     private Surface videoSurface;
-    private boolean hasVideoFrame = false;
 
     static {
         System.loadLibrary("videoplayer_jni");
@@ -166,7 +163,6 @@ public class VrVideoActivity extends AppCompatActivity {
         videoSurfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-                hasVideoFrame = true;
                 // Update the native texture
                 nativeUpdateVideoTexture(nativeApp, videoSurfaceTexture);
             }

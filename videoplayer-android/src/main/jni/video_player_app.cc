@@ -86,7 +86,6 @@ const float kQuadTexCoords[] = {
 };
 
 // 180-degree FOV for static viewing
-const float kFovDegrees = 180.0f;
 
 }  // namespace
 
@@ -101,7 +100,6 @@ VideoPlayerApp::VideoPlayerApp()
       lens_distortion_(nullptr),
       distortion_renderer_(nullptr),
       head_tracker_(nullptr),
-      frame_updated_(false),
       has_video_frame_(false),
       screen_width_(0),
       screen_height_(0) {
@@ -318,7 +316,6 @@ void VideoPlayerApp::CreateTestPattern() {
       
       // Animated color based on position and time
       float angle = atan2(dy, dx) + time;
-      float wave = sin(distance * 0.02f - time * 2.0f) * 0.5f + 0.5f;
       
       // Create RGB values with animation
       test_pattern[index] = (uint8_t)(128 + 127 * sin(angle + time));           // R
@@ -341,11 +338,6 @@ void VideoPlayerApp::CreateVideoIndicatorPattern() {
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       int index = (y * width + x) * 3;
-      float center_x = width / 2.0f; float center_y = height / 2.0f;
-      float dx = x - center_x; float dy = y - center_y;
-      float distance = sqrt(dx * dx + dy * dy);
-      float angle = atan2(dy, dx) + time;
-      
       // Create a pulsing green pattern to indicate video is available
       float pulse = 0.5f + 0.5f * sin(time * 2.0f);
       pattern[index] = (uint8_t)(50 * pulse);     // Red - low

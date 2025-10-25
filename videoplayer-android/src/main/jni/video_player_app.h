@@ -101,7 +101,6 @@ class VideoPlayerApp {
   int frame_width_;
   int frame_height_;
 #endif
-  bool frame_updated_;
   bool has_video_frame_;
   
   // Rendering parameters
