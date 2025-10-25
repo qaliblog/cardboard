@@ -347,7 +347,11 @@ void VideoPlayerApp::RenderTextureToScreen() {
   glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 
                        (void*)(3 * sizeof(float)));
   
-  // Set MVP matrix to identity for now
+  // Render for both eyes with proper viewport setup
+  int half_width = screen_width_ / 2;
+  LOGD("Rendering VR split-screen: %dx%d, half_width=%d", screen_width_, screen_height_, half_width);
+  
+  // Set MVP matrix (same for both eyes)
   float mvp_matrix[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
@@ -356,8 +360,16 @@ void VideoPlayerApp::RenderTextureToScreen() {
   };
   glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, mvp_matrix);
   
-  // Draw the quad (both eyes)
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 8);
+  // Left eye
+  glViewport(0, 0, half_width, screen_height_);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Draw first quad (left eye)
+  
+  // Right eye  
+  glViewport(half_width, 0, half_width, screen_height_);
+  glDrawArrays(GL_TRIANGLE_STRIP, 4, 4); // Draw second quad (right eye)
+  
+  // Reset viewport to full screen
+  glViewport(0, 0, screen_width_, screen_height_);
   
   // Disable vertex attributes
   glDisableVertexAttribArray(position_attrib_);
