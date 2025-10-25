@@ -32,8 +32,7 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeOnCreate(
     JNIEnv* env, jobject obj, jobject asset_manager) {
-  AAssetManager* mgr = AAssetManager_fromJava(env, asset_manager);
-  g_video_player_app = std::make_unique<VideoPlayerApp>(mgr);
+  g_video_player_app = std::make_unique<VideoPlayerApp>();
   return reinterpret_cast<jlong>(g_video_player_app.get());
 }
 

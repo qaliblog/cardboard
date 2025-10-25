@@ -89,7 +89,7 @@ const float kFovDegrees = 180.0f;
 
 }  // namespace
 
-VideoPlayerApp::VideoPlayerApp(AAssetManager* asset_manager)
+VideoPlayerApp::VideoPlayerApp()
     : program_(0),
       vertex_buffer_(0),
       texture_id_(0),
@@ -102,9 +102,7 @@ VideoPlayerApp::VideoPlayerApp(AAssetManager* asset_manager)
       head_tracker_(nullptr),
       frame_updated_(false),
       screen_width_(0),
-      screen_height_(0),
-      fov_degrees_(kFovDegrees),
-      asset_manager_(asset_manager) {
+      screen_height_(0) {
   LOGD("VideoPlayerApp constructor");
 }
 
@@ -274,12 +272,10 @@ void VideoPlayerApp::InitializeCardboard() {
   // Create head tracker
   head_tracker_ = CardboardHeadTracker_create();
   
-  // Create lens distortion with default parameters
-  // Use default device parameters for now
-  lens_distortion_ = CardboardLensDistortion_create();
-  
-  // Create distortion renderer
-  distortion_renderer_ = CardboardDistortionRenderer_create();
+  // For now, skip complex distortion rendering
+  // We'll use simple split-screen rendering instead
+  lens_distortion_ = nullptr;
+  distortion_renderer_ = nullptr;
 }
 
 void VideoPlayerApp::RenderVideoFrame() {

@@ -50,7 +50,7 @@ struct EffectSettings {
 
 class VideoPlayerApp {
  public:
-  VideoPlayerApp(AAssetManager* asset_manager);
+  VideoPlayerApp();
   ~VideoPlayerApp();
 
   void OnSurfaceCreated();
@@ -104,10 +104,6 @@ class VideoPlayerApp {
   // Rendering parameters
   int screen_width_;
   int screen_height_;
-  float fov_degrees_;
-  
-  // Asset manager
-  AAssetManager* asset_manager_;
   
   // Video URI (passed from Java)
   std::string video_uri_;
