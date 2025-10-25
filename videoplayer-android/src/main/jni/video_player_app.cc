@@ -20,6 +20,7 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include <chrono>
 
 #include "cardboard.h"
 
@@ -279,50 +280,47 @@ void VideoPlayerApp::InitializeCardboard() {
 }
 
 void VideoPlayerApp::RenderVideoFrame() {
-  // Always render - create a test pattern if no video frame is available
+  // For now, always render the animated test pattern
+  // This ensures we can see that the rendering pipeline is working
   glBindTexture(GL_TEXTURE_2D, texture_id_);
+  CreateTestPattern();
   
-  if (frame_updated_ && !processed_frame_.empty()) {
-    // Update texture with current frame
-#ifdef OPENCV_AVAILABLE
-    cv::Mat gl_frame;
-    cv::cvtColor(processed_frame_, gl_frame, cv::COLOR_BGR2RGB);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, gl_frame.cols, gl_frame.rows,
-                    GL_RGB, GL_UNSIGNED_BYTE, gl_frame.data);
-#else
-    // Process raw frame data without OpenCV
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame_width_, frame_height_,
-                    GL_RGB, GL_UNSIGNED_BYTE, processed_frame_data_);
-#endif
-    frame_updated_ = false;
-  } else {
-    // Create a test pattern to verify rendering is working
-    CreateTestPattern();
-  }
+  // TODO: Add actual video frame processing here
+  // The ExoPlayer is playing the video in a separate view,
+  // but we need to extract frames and pass them to this native code
 }
 
 void VideoPlayerApp::CreateTestPattern() {
-  // Create a simple test pattern to verify rendering
+  // Create an animated test pattern to verify rendering
   const int width = 512;
   const int height = 512;
   std::vector<uint8_t> test_pattern(width * height * 3);
+  
+  // Get current time for animation
+  auto now = std::chrono::high_resolution_clock::now();
+  auto duration = now.time_since_epoch();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+  float time = millis * 0.001f; // Convert to seconds
   
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       int index = (y * width + x) * 3;
       
-      // Create a checkerboard pattern
-      bool is_white = ((x / 32) + (y / 32)) % 2 == 0;
+      // Create an animated pattern with moving colors
+      float center_x = width / 2.0f;
+      float center_y = height / 2.0f;
+      float dx = x - center_x;
+      float dy = y - center_y;
+      float distance = sqrt(dx * dx + dy * dy);
       
-      if (is_white) {
-        test_pattern[index] = 255;     // R
-        test_pattern[index + 1] = 255; // G
-        test_pattern[index + 2] = 255; // B
-      } else {
-        test_pattern[index] = 0;       // R
-        test_pattern[index + 1] = 0;   // G
-        test_pattern[index + 2] = 0;   // B
-      }
+      // Animated color based on position and time
+      float angle = atan2(dy, dx) + time;
+      float wave = sin(distance * 0.02f - time * 2.0f) * 0.5f + 0.5f;
+      
+      // Create RGB values with animation
+      test_pattern[index] = (uint8_t)(128 + 127 * sin(angle + time));           // R
+      test_pattern[index + 1] = (uint8_t)(128 + 127 * sin(angle + time + 2.0f)); // G
+      test_pattern[index + 2] = (uint8_t)(128 + 127 * sin(angle + time + 4.0f)); // B
     }
   }
   
