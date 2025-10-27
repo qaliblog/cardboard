@@ -112,18 +112,18 @@ const float kQuadVertices[] = {
      1.0f,  1.0f, 0.0f,  // top right
 };
 
-// Texture coordinates for the quad
+// Texture coordinates for the quad - both eyes use the full video frame
 const float kQuadTexCoords[] = {
-    // Left eye texture coords
+    // Left eye texture coords - uses full video frame
     0.0f, 1.0f,  // bottom left
-    0.5f, 1.0f,  // bottom right
-    0.0f, 0.0f,  // top left
-    0.5f, 0.0f,  // top right
-    
-    // Right eye texture coords
-    0.5f, 1.0f,  // bottom left
     1.0f, 1.0f,  // bottom right
-    0.5f, 0.0f,  // top left
+    0.0f, 0.0f,  // top left
+    1.0f, 0.0f,  // top right
+    
+    // Right eye texture coords - uses full video frame (same as left)
+    0.0f, 1.0f,  // bottom left
+    1.0f, 1.0f,  // bottom right
+    0.0f, 0.0f,  // top left
     1.0f, 0.0f,  // top right
 };
 
@@ -346,11 +346,11 @@ void VideoPlayerApp::RenderVideoFrame() {
   glBindTexture(GL_TEXTURE_2D, texture_id_);
   
   if (has_video_frame_) {
-    // Video frame is available - the SurfaceTexture should have updated the texture
-    // For VR stereo rendering, we need to create a split-screen version
-    // The original video frame will be duplicated for both eyes
-    LOGD("Rendering video frame from SurfaceTexture for stereo VR");
-    CreateSplitScreenVideoFrame();
+    // Video frame is available - the SurfaceTexture has updated the texture
+    // The texture now contains the actual video content
+    // We don't need to modify it - just use it directly for stereo rendering
+    LOGD("Using video frame from SurfaceTexture for stereo VR rendering");
+    // No need to create patterns - the texture already has the video content
   } else {
     // Show animated test pattern when no video is available
     CreateTestPattern();
@@ -496,17 +496,18 @@ void VideoPlayerApp::RenderTextureToScreen() {
   // Set time uniform
   glUniform1f(time_uniform_, time);
   
-  // Set MVP matrix
-  float mvp_matrix[16] = {
-    1.0f, 0.0f, 0.0f, 0.0f,
+  // Render left eye with slight stereo offset
+  glViewport(0, 0, screen_width_ / 2, screen_height_);
+  
+  // Create MVP matrix with slight left offset for stereo effect
+  float left_mvp_matrix[16] = {
+    1.0f, 0.0f, 0.0f, -0.02f,  // Slight left offset
     0.0f, 1.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 1.0f, 0.0f,
     0.0f, 0.0f, 0.0f, 1.0f
   };
-  glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, mvp_matrix);
+  glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, left_mvp_matrix);
   
-  // Render left eye
-  glViewport(0, 0, screen_width_ / 2, screen_height_);
   glUniform1i(is_left_eye_uniform_, 1);
   glUniform1f(contrast_uniform_, effect_settings_.left_eye_contrast);
   glUniform1f(red_tint_uniform_, effect_settings_.left_eye_red_tint);
@@ -515,8 +516,18 @@ void VideoPlayerApp::RenderTextureToScreen() {
   glUniform1f(directional_stretch_uniform_, effect_settings_.left_eye_directional);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Draw left eye quad
   
-  // Render right eye
+  // Render right eye with slight stereo offset
   glViewport(screen_width_ / 2, 0, screen_width_ / 2, screen_height_);
+  
+  // Create MVP matrix with slight right offset for stereo effect
+  float right_mvp_matrix[16] = {
+    1.0f, 0.0f, 0.0f, 0.02f,   // Slight right offset
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+  };
+  glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, right_mvp_matrix);
+  
   glUniform1i(is_left_eye_uniform_, 0);
   glUniform1f(contrast_uniform_, effect_settings_.right_eye_contrast);
   glUniform1f(red_tint_uniform_, effect_settings_.right_eye_red_tint);
