@@ -151,10 +151,16 @@ public class VrVideoActivity extends AppCompatActivity {
         // Set up video frame extraction
         setupVideoFrameExtraction();
         
+        // Start video buffering
+        nativeStartBuffering(nativeApp);
+        
         MediaItem mediaItem = MediaItem.fromUri(videoUri);
         exoPlayer.setMediaItem(mediaItem);
         exoPlayer.prepare();
         exoPlayer.play();
+        
+        // Set up video frame extraction callback
+        setupVideoFrameCallback();
     }
     
     private void setupVideoFrameExtraction() {
@@ -175,6 +181,39 @@ public class VrVideoActivity extends AppCompatActivity {
         
         // Set the video surface for ExoPlayer
         exoPlayer.setVideoSurface(videoSurface);
+    }
+    
+    private void setupVideoFrameCallback() {
+        // Set up a periodic callback to extract video frames for buffering
+        Handler frameHandler = new Handler(Looper.getMainLooper());
+        Runnable frameExtractor = new Runnable() {
+            @Override
+            public void run() {
+                if (exoPlayer != null && exoPlayer.isPlaying()) {
+                    // Extract current frame and buffer it
+                    extractAndBufferCurrentFrame();
+                    
+                    // Schedule next extraction (30 FPS)
+                    frameHandler.postDelayed(this, 33); // ~30 FPS
+                }
+            }
+        };
+        frameHandler.post(frameExtractor);
+    }
+    
+    private void extractAndBufferCurrentFrame() {
+        if (videoSurfaceTexture != null) {
+            // Update the texture with the latest frame
+            videoSurfaceTexture.updateTexImage();
+            
+            // Get current playback position
+            long currentPosition = exoPlayer.getCurrentPosition();
+            
+            // For now, we'll use a simple approach - in a real implementation,
+            // you'd extract the actual frame data from the SurfaceTexture
+            // This is a placeholder that indicates frame availability
+            nativeUpdateVideoTexture(nativeApp, videoSurfaceTexture);
+        }
     }
     
     private void setupSettingsButton() {
@@ -371,6 +410,7 @@ public class VrVideoActivity extends AppCompatActivity {
         if (sensorManager != null && gyroscopeListener != null) {
             sensorManager.unregisterListener(gyroscopeListener);
         }
+        nativeStopBuffering(nativeApp);
         nativeOnDestroy(nativeApp);
         nativeApp = 0;
     }
@@ -416,4 +456,7 @@ public class VrVideoActivity extends AppCompatActivity {
         float rightFogIntensity, float rightDirectional);
     private native int nativeGetVideoTextureId(long nativeApp);
     private native void nativeUpdateVideoTexture(long nativeApp, SurfaceTexture surfaceTexture);
+    private native void nativeBufferVideoFrame(long nativeApp, byte[] frameData, int width, int height, long timestamp);
+    private native void nativeStartBuffering(long nativeApp);
+    private native void nativeStopBuffering(long nativeApp);
 }

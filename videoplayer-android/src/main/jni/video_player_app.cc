@@ -21,6 +21,7 @@
 #include <cmath>
 #include <memory>
 #include <chrono>
+#include <cstring>
 
 #include "cardboard.h"
 
@@ -44,14 +45,55 @@ void main() {
 }
 )";
 
-// Fragment shader for rendering video frames
+// Fragment shader for rendering video frames with 3D effects
 const char kFragmentShader[] = R"(
 precision mediump float;
 varying vec2 v_tex_coord;
 uniform sampler2D texture;
+uniform float contrast;
+uniform float red_tint;
+uniform float green_tint;
+uniform float fog_intensity;
+uniform float directional_stretch;
+uniform float time;
+uniform bool is_left_eye;
 
 void main() {
-  gl_FragColor = texture2D(texture, v_tex_coord);
+  vec2 tex_coord = v_tex_coord;
+  
+  // Apply directional stretch effect
+  if (directional_stretch != 0.0) {
+    float stretch_amount = directional_stretch * 0.1;
+    if (is_left_eye) {
+      tex_coord.x = tex_coord.x + stretch_amount * (tex_coord.x - 0.5);
+    } else {
+      tex_coord.x = tex_coord.x - stretch_amount * (tex_coord.x - 0.5);
+    }
+    tex_coord.x = clamp(tex_coord.x, 0.0, 1.0);
+  }
+  
+  // Sample the texture
+  vec4 color = texture2D(texture, tex_coord);
+  
+  // Apply contrast
+  color.rgb = (color.rgb - 0.5) * contrast + 0.5;
+  
+  // Apply color tinting
+  color.r += red_tint * 0.3;
+  color.g += green_tint * 0.3;
+  
+  // Apply fog effect
+  if (fog_intensity > 0.0) {
+    float distance = length(tex_coord - 0.5);
+    float fog_factor = 1.0 - smoothstep(0.0, 0.7, distance) * fog_intensity;
+    color.rgb = mix(vec3(0.5, 0.5, 0.5), color.rgb, fog_factor);
+  }
+  
+  // Add subtle 3D depth effect based on contrast
+  float depth_factor = 1.0 + (contrast - 1.0) * 0.1;
+  color.rgb *= depth_factor;
+  
+  gl_FragColor = color;
 }
 )";
 
@@ -97,13 +139,28 @@ VideoPlayerApp::VideoPlayerApp()
       tex_coord_attrib_(0),
       mvp_matrix_uniform_(0),
       texture_uniform_(0),
+      contrast_uniform_(0),
+      red_tint_uniform_(0),
+      green_tint_uniform_(0),
+      fog_intensity_uniform_(0),
+      directional_stretch_uniform_(0),
+      time_uniform_(0),
+      is_left_eye_uniform_(0),
       lens_distortion_(nullptr),
       distortion_renderer_(nullptr),
       head_tracker_(nullptr),
       has_video_frame_(false),
       screen_width_(0),
-      screen_height_(0) {
+      screen_height_(0),
+      current_frame_index_(0),
+      buffered_frames_count_(0),
+      is_buffering_(false) {
   LOGD("VideoPlayerApp constructor");
+  
+  // Initialize video frame buffer
+  video_frame_buffer_.resize(MAX_BUFFERED_FRAMES);
+  frame_timestamps_.resize(MAX_BUFFERED_FRAMES);
+  last_buffer_time_ = std::chrono::high_resolution_clock::now();
 }
 
 VideoPlayerApp::~VideoPlayerApp() {
@@ -224,6 +281,13 @@ void VideoPlayerApp::InitializeGl() {
   tex_coord_attrib_ = glGetAttribLocation(program_, "tex_coord");
   mvp_matrix_uniform_ = glGetUniformLocation(program_, "mvp_matrix");
   texture_uniform_ = glGetUniformLocation(program_, "texture");
+  contrast_uniform_ = glGetUniformLocation(program_, "contrast");
+  red_tint_uniform_ = glGetUniformLocation(program_, "red_tint");
+  green_tint_uniform_ = glGetUniformLocation(program_, "green_tint");
+  fog_intensity_uniform_ = glGetUniformLocation(program_, "fog_intensity");
+  directional_stretch_uniform_ = glGetUniformLocation(program_, "directional_stretch");
+  time_uniform_ = glGetUniformLocation(program_, "time");
+  is_left_eye_uniform_ = glGetUniformLocation(program_, "is_left_eye");
   
   // Create vertex buffer
   glGenBuffers(1, &vertex_buffer_);
@@ -368,8 +432,14 @@ void VideoPlayerApp::RenderTextureToScreen() {
   glVertexAttribPointer(tex_coord_attrib_, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), 
                        (void*)(3 * sizeof(float)));
   
-  // Render for both eyes using full-screen quad with split texture coordinates
-  LOGD("Rendering VR split-screen: %dx%d", screen_width_, screen_height_);
+  // Get current time for animation
+  auto now = std::chrono::high_resolution_clock::now();
+  auto duration = now.time_since_epoch();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+  float time = millis * 0.001f;
+  
+  // Set time uniform
+  glUniform1f(time_uniform_, time);
   
   // Set MVP matrix
   float mvp_matrix[16] = {
@@ -380,8 +450,28 @@ void VideoPlayerApp::RenderTextureToScreen() {
   };
   glUniformMatrix4fv(mvp_matrix_uniform_, 1, GL_FALSE, mvp_matrix);
   
-  // Draw the full quad (both eyes) - texture coordinates handle the split
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 8); // Draw all 8 vertices (2 quads)
+  // Render left eye
+  glViewport(0, 0, screen_width_ / 2, screen_height_);
+  glUniform1i(is_left_eye_uniform_, 1);
+  glUniform1f(contrast_uniform_, effect_settings_.left_eye_contrast);
+  glUniform1f(red_tint_uniform_, effect_settings_.left_eye_red_tint);
+  glUniform1f(green_tint_uniform_, effect_settings_.left_eye_green_tint);
+  glUniform1f(fog_intensity_uniform_, effect_settings_.left_eye_fog_intensity);
+  glUniform1f(directional_stretch_uniform_, effect_settings_.left_eye_directional);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); // Draw left eye quad
+  
+  // Render right eye
+  glViewport(screen_width_ / 2, 0, screen_width_ / 2, screen_height_);
+  glUniform1i(is_left_eye_uniform_, 0);
+  glUniform1f(contrast_uniform_, effect_settings_.right_eye_contrast);
+  glUniform1f(red_tint_uniform_, effect_settings_.right_eye_red_tint);
+  glUniform1f(green_tint_uniform_, effect_settings_.right_eye_green_tint);
+  glUniform1f(fog_intensity_uniform_, effect_settings_.right_eye_fog_intensity);
+  glUniform1f(directional_stretch_uniform_, effect_settings_.right_eye_directional);
+  glDrawArrays(GL_TRIANGLE_STRIP, 4, 4); // Draw right eye quad
+  
+  // Reset viewport
+  glViewport(0, 0, screen_width_, screen_height_);
   
   // Disable vertex attributes
   glDisableVertexAttribArray(position_attrib_);
@@ -551,6 +641,64 @@ int VideoPlayerApp::GetVideoTextureId() {
 void VideoPlayerApp::UpdateVideoTexture() {
   has_video_frame_ = true;
   LOGD("Video texture updated - frame available");
+}
+
+void VideoPlayerApp::BufferVideoFrame(const uint8_t* frame_data, int width, int height, int64_t timestamp) {
+  if (!is_buffering_ || buffered_frames_count_ >= MAX_BUFFERED_FRAMES) {
+    return;
+  }
+  
+  // Calculate frame size
+  int frame_size = width * height * 3; // RGB format
+  
+  // Store frame data
+  video_frame_buffer_[buffered_frames_count_].resize(frame_size);
+  memcpy(video_frame_buffer_[buffered_frames_count_].data(), frame_data, frame_size);
+  frame_timestamps_[buffered_frames_count_] = timestamp;
+  
+  buffered_frames_count_++;
+  last_buffer_time_ = std::chrono::high_resolution_clock::now();
+  
+  LOGD("Buffered frame %d at timestamp %lld", buffered_frames_count_, timestamp);
+}
+
+bool VideoPlayerApp::GetBufferedFrame(int64_t target_time, std::vector<uint8_t>& frame_data) {
+  if (buffered_frames_count_ == 0) {
+    return false;
+  }
+  
+  // Find the closest frame to the target time
+  int best_frame = 0;
+  int64_t best_diff = std::abs(frame_timestamps_[0] - target_time);
+  
+  for (int i = 1; i < buffered_frames_count_; i++) {
+    int64_t diff = std::abs(frame_timestamps_[i] - target_time);
+    if (diff < best_diff) {
+      best_diff = diff;
+      best_frame = i;
+    }
+  }
+  
+  // If the difference is too large, don't use this frame
+  if (best_diff > 1000000) { // 1 second in microseconds
+    return false;
+  }
+  
+  frame_data = video_frame_buffer_[best_frame];
+  return true;
+}
+
+void VideoPlayerApp::StartBuffering() {
+  is_buffering_ = true;
+  buffered_frames_count_ = 0;
+  current_frame_index_ = 0;
+  last_buffer_time_ = std::chrono::high_resolution_clock::now();
+  LOGD("Started video buffering");
+}
+
+void VideoPlayerApp::StopBuffering() {
+  is_buffering_ = false;
+  LOGD("Stopped video buffering");
 }
 
 }  // namespace cardboard

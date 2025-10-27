@@ -23,6 +23,8 @@
 #include <android/asset_manager.h>
 #include <jni.h>
 #include <memory>
+#include <chrono>
+#include <vector>
 #ifdef OPENCV_AVAILABLE
 #include <opencv2/opencv.hpp>
 #endif
@@ -40,12 +42,12 @@ struct EffectSettings {
   float left_eye_fog_intensity = 0.3f;
   float left_eye_directional = 0.0f;
   
-  bool right_eye_enabled = false;
-  float right_eye_contrast = 1.0f;
-  float right_eye_red_tint = 0.0f;
+  bool right_eye_enabled = true;
+  float right_eye_contrast = 1.2f;
+  float right_eye_red_tint = 0.1f;
   float right_eye_green_tint = 0.0f;
-  float right_eye_fog_intensity = 0.0f;
-  float right_eye_directional = 0.0f;
+  float right_eye_fog_intensity = 0.1f;
+  float right_eye_directional = 0.2f;
 };
 
 class VideoPlayerApp {
@@ -63,6 +65,10 @@ class VideoPlayerApp {
   void SetEffectSettings(const EffectSettings& settings);
   int GetVideoTextureId();
   void UpdateVideoTexture();
+  void BufferVideoFrame(const uint8_t* frame_data, int width, int height, int64_t timestamp);
+  bool GetBufferedFrame(int64_t target_time, std::vector<uint8_t>& frame_data);
+  void StartBuffering();
+  void StopBuffering();
 
  private:
   void InitializeGl();
@@ -86,6 +92,13 @@ class VideoPlayerApp {
   GLint tex_coord_attrib_;
   GLint mvp_matrix_uniform_;
   GLint texture_uniform_;
+  GLint contrast_uniform_;
+  GLint red_tint_uniform_;
+  GLint green_tint_uniform_;
+  GLint fog_intensity_uniform_;
+  GLint directional_stretch_uniform_;
+  GLint time_uniform_;
+  GLint is_left_eye_uniform_;
   
   // Cardboard resources
   CardboardLensDistortion* lens_distortion_;
@@ -113,6 +126,16 @@ class VideoPlayerApp {
   
   // Effect settings
   EffectSettings effect_settings_;
+  
+  // Video buffering system
+  static constexpr int BUFFER_SIZE_SECONDS = 20;
+  static constexpr int MAX_BUFFERED_FRAMES = 600; // 20 seconds at 30fps
+  std::vector<std::vector<uint8_t>> video_frame_buffer_;
+  std::vector<int64_t> frame_timestamps_;
+  int current_frame_index_;
+  int buffered_frames_count_;
+  bool is_buffering_;
+  std::chrono::high_resolution_clock::time_point last_buffer_time_;
 };
 
 }  // namespace cardboard

@@ -126,12 +126,12 @@ public class SettingsActivity extends AppCompatActivity {
         leftEyeDirectionalSlider.setValue(preferences.getFloat("left_eye_directional", 0.0f));
         
         // Load right eye settings
-        rightEyeEnabledSwitch.setChecked(preferences.getBoolean("right_eye_enabled", false));
-        rightEyeContrastSlider.setValue(preferences.getFloat("right_eye_contrast", 1.0f));
-        rightEyeRedTintSlider.setValue(preferences.getFloat("right_eye_red_tint", 0.0f));
+        rightEyeEnabledSwitch.setChecked(preferences.getBoolean("right_eye_enabled", true));
+        rightEyeContrastSlider.setValue(preferences.getFloat("right_eye_contrast", 1.2f));
+        rightEyeRedTintSlider.setValue(preferences.getFloat("right_eye_red_tint", 0.1f));
         rightEyeGreenTintSlider.setValue(preferences.getFloat("right_eye_green_tint", 0.0f));
-        rightEyeFogIntensitySlider.setValue(preferences.getFloat("right_eye_fog_intensity", 0.0f));
-        rightEyeDirectionalSlider.setValue(preferences.getFloat("right_eye_directional", 0.0f));
+        rightEyeFogIntensitySlider.setValue(preferences.getFloat("right_eye_fog_intensity", 0.1f));
+        rightEyeDirectionalSlider.setValue(preferences.getFloat("right_eye_directional", 0.2f));
         
         updateValueLabels();
     }
@@ -250,12 +250,12 @@ public class SettingsActivity extends AppCompatActivity {
         settings.leftEyeDirectional = prefs.getFloat("left_eye_directional", 0.0f);
         
         // Right eye settings
-        settings.rightEyeEnabled = prefs.getBoolean("right_eye_enabled", false);
-        settings.rightEyeContrast = prefs.getFloat("right_eye_contrast", 1.0f);
-        settings.rightEyeRedTint = prefs.getFloat("right_eye_red_tint", 0.0f);
+        settings.rightEyeEnabled = prefs.getBoolean("right_eye_enabled", true);
+        settings.rightEyeContrast = prefs.getFloat("right_eye_contrast", 1.2f);
+        settings.rightEyeRedTint = prefs.getFloat("right_eye_red_tint", 0.1f);
         settings.rightEyeGreenTint = prefs.getFloat("right_eye_green_tint", 0.0f);
-        settings.rightEyeFogIntensity = prefs.getFloat("right_eye_fog_intensity", 0.0f);
-        settings.rightEyeDirectional = prefs.getFloat("right_eye_directional", 0.0f);
+        settings.rightEyeFogIntensity = prefs.getFloat("right_eye_fog_intensity", 0.1f);
+        settings.rightEyeDirectional = prefs.getFloat("right_eye_directional", 0.2f);
         
         return settings;
     }

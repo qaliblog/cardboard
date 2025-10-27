@@ -138,4 +138,32 @@ Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeUpdateVideoTexture(
   }
 }
 
+JNIEXPORT void JNICALL
+Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeBufferVideoFrame(
+    JNIEnv* env, jobject obj, jlong native_app, jbyteArray frame_data, 
+    jint width, jint height, jlong timestamp) {
+  if (g_video_player_app) {
+    jbyte* data = env->GetByteArrayElements(frame_data, nullptr);
+    g_video_player_app->BufferVideoFrame(reinterpret_cast<uint8_t*>(data), 
+                                        width, height, timestamp);
+    env->ReleaseByteArrayElements(frame_data, data, JNI_ABORT);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeStartBuffering(
+    JNIEnv* env, jobject obj, jlong native_app) {
+  if (g_video_player_app) {
+    g_video_player_app->StartBuffering();
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_com_google_cardboard_videoplayer_VrVideoActivity_nativeStopBuffering(
+    JNIEnv* env, jobject obj, jlong native_app) {
+  if (g_video_player_app) {
+    g_video_player_app->StopBuffering();
+  }
+}
+
 }  // extern "C"
