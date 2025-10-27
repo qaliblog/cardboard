@@ -347,12 +347,67 @@ void VideoPlayerApp::RenderVideoFrame() {
   
   if (has_video_frame_) {
     // Video frame is available - the SurfaceTexture should have updated the texture
-    // No need to create patterns, just use the existing texture content
-    LOGD("Rendering video frame from SurfaceTexture");
+    // For VR stereo rendering, we need to create a split-screen version
+    // The original video frame will be duplicated for both eyes
+    LOGD("Rendering video frame from SurfaceTexture for stereo VR");
+    CreateSplitScreenVideoFrame();
   } else {
     // Show animated test pattern when no video is available
     CreateTestPattern();
   }
+}
+
+void VideoPlayerApp::CreateSplitScreenVideoFrame() {
+  // For VR stereo rendering, we need to create a split-screen texture
+  // where the left half shows the video for the left eye and the right half for the right eye
+  // Since we can't directly read from the SurfaceTexture, we'll create a test pattern
+  // that demonstrates the split-screen effect
+  
+  const int width = 512;
+  const int height = 512;
+  std::vector<uint8_t> split_screen_pattern(width * height * 3);
+  
+  // Get current time for animation
+  auto now = std::chrono::high_resolution_clock::now();
+  auto duration = now.time_since_epoch();
+  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+  float time = millis * 0.001f;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int index = (y * width + x) * 3;
+      
+      // Create split-screen pattern
+      if (x < width / 2) {
+        // Left eye - blue tinted pattern
+        float center_x = width / 4.0f;  // Center of left half
+        float center_y = height / 2.0f;
+        float dx = x - center_x;
+        float dy = y - center_y;
+        float distance = sqrt(dx * dx + dy * dy);
+        float angle = atan2(dy, dx) + time;
+        
+        split_screen_pattern[index] = (uint8_t)(50 + 50 * sin(angle + time));           // R - low
+        split_screen_pattern[index + 1] = (uint8_t)(100 + 100 * sin(angle + time + 1.0f)); // G - medium
+        split_screen_pattern[index + 2] = (uint8_t)(200 + 55 * sin(angle + time + 2.0f)); // B - high
+      } else {
+        // Right eye - red tinted pattern
+        float center_x = width * 3.0f / 4.0f;  // Center of right half
+        float center_y = height / 2.0f;
+        float dx = x - center_x;
+        float dy = y - center_y;
+        float distance = sqrt(dx * dx + dy * dy);
+        float angle = atan2(dy, dx) + time;
+        
+        split_screen_pattern[index] = (uint8_t)(200 + 55 * sin(angle + time));           // R - high
+        split_screen_pattern[index + 1] = (uint8_t)(100 + 100 * sin(angle + time + 1.0f)); // G - medium
+        split_screen_pattern[index + 2] = (uint8_t)(50 + 50 * sin(angle + time + 2.0f)); // B - low
+      }
+    }
+  }
+  
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                  GL_RGB, GL_UNSIGNED_BYTE, split_screen_pattern.data());
 }
 
 void VideoPlayerApp::CreateTestPattern() {

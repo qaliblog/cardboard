@@ -74,6 +74,7 @@ class VideoPlayerApp {
   void InitializeGl();
   void InitializeCardboard();
   void RenderVideoFrame();
+  void CreateSplitScreenVideoFrame();
   void CreateTestPattern();
   void CreateVideoIndicatorPattern();
   void RenderTextureToScreen();
